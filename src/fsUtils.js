@@ -1,6 +1,6 @@
 import { stdout } from "process";
 import { sep } from "path";
-import { stat, writeFile } from "node:fs/promises";
+import { stat, writeFile, rename } from "node:fs/promises";
 import { createReadStream } from "fs";
 
 const operationFailedMessage = "Operation Failed";
@@ -28,4 +28,17 @@ const addFile = async (fileName, currentDir) => {
   }
 };
 
-export { printFileContent, addFile };
+const renameFile = async (args, currentDir) => {
+  const argsArray = args.split(" ");
+
+  try {
+    const previousName = currentDir + sep + argsArray[0];
+    const newName = currentDir + sep + argsArray[1];
+    await rename(previousName, newName);
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
+  }
+};
+
+export { printFileContent, addFile, renameFile };
