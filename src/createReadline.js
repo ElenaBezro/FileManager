@@ -51,27 +51,24 @@ const goToDir = async (args) => {
 
 const sortFolderContent = async (array) => {
   try {
-    const foldersIndex = 0;
-    const filesIndex = 1;
+    const fileNameComparator = (a, b) => a.localeCompare(b);
+    const sortByName = (array) => array.sort(fileNameComparator);
 
-    const sortByName = (array) => {
-      const compare = (a, b) => a.localeCompare(b);
-      return array.sort(compare);
-    };
+    const folders = [];
+    const files = [];
 
-    const sortByType = await sortByName(array).reduce(async (acc, elem) => {
-      console.log(getElemPath(elem, currentDir));
-      console.log("before stat", elem);
+    const sortedFileAndDirectoryNames = await sortByName(array);
+    for (const fileOrDirectoryName of sortedFileAndDirectoryNames) {
+      const fileOrDirectoryStat = await stat(getElemPath(fileOrDirectoryName, currentDir));
+      if (fileOrDirectoryStat.isDirectory()) {
+        folders.push({ name: fileOrDirectoryName, type: "directory" });
+      } else {
+        files.push({ name: fileOrDirectoryName, type: "file" });
+      }
+    }
 
-      const elemStat = await stat(getElemPath(elem, currentDir));
-      const arr = await acc;
-      elemStat.isDirectory() ? arr[foldersIndex].push({ name: elem, type: "directory" }) : arr[filesIndex].push({ name: elem, type: "file" });
-      return arr;
-    }, Promise.resolve([[], []]));
-
-    return sortByType[foldersIndex].concat(sortByType[filesIndex]);
+    return [...folders, ...files];
   } catch (e) {
-    console.log("kfjdljf");
     throw new Error(e.message);
   }
 };
@@ -116,9 +113,7 @@ const createReadline = () => {
     } else {
       const startArgsIndex = line.indexOf(" ");
       const args = startArgsIndex !== -1 && line.slice(startArgsIndex).trim();
-      console.log(args);
       const lineWithoutArgs = line.slice(0, startArgsIndex);
-      console.log(lineWithoutArgs);
       switch (lineWithoutArgs) {
         case "cd":
           await goToDir(args);
