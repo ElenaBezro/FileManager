@@ -1,8 +1,8 @@
 import process from "process";
 import { basename, parse, sep } from "path";
 import readlinePromises from "node:readline/promises";
-import { access } from "node:fs/promises";
-import { getCurrentDir } from "./getDirectory.js";
+import { access, readdir, stat } from "node:fs/promises";
+import { getCurrentDir, isPathAbsolute, getElemPath } from "./pathUtils.js";
 import { getUserName } from "./getUserName.js";
 
 const invalidInputMessage = "Invalid input";
@@ -21,10 +21,6 @@ const exitProgram = () => {
   console.log("\n");
   console.log(goodbyeMessage);
   rl.close();
-};
-
-const isPathAbsolute = (args) => {
-  return args.startsWith("\\\\");
 };
 
 const goToUpperDir = () => {
@@ -46,9 +42,49 @@ const goToDir = async (args) => {
 
     await access(newPath);
     currentDir = newPath;
+    // TODO: Check if path contain filename
   } catch {
     console.log(operationFailedMessage);
     console.log(correctPathMessage);
+  }
+};
+
+const sortFolderContent = async (array) => {
+  try {
+    const foldersIndex = 0;
+    const filesIndex = 1;
+
+    const sortByName = (array) => {
+      const compare = (a, b) => a.localeCompare(b);
+      return array.sort(compare);
+    };
+
+    const sortByType = await sortByName(array).reduce(async (acc, elem) => {
+      console.log(getElemPath(elem, currentDir));
+      console.log("before stat", elem);
+
+      const elemStat = await stat(getElemPath(elem, currentDir));
+      const arr = await acc;
+      elemStat.isDirectory() ? arr[foldersIndex].push({ name: elem, type: "directory" }) : arr[filesIndex].push({ name: elem, type: "file" });
+      return arr;
+    }, Promise.resolve([[], []]));
+
+    return sortByType[foldersIndex].concat(sortByType[filesIndex]);
+  } catch (e) {
+    console.log("kfjdljf");
+    throw new Error(e.message);
+  }
+};
+
+const showFolderContent = async () => {
+  try {
+    const folderContent = await readdir(currentDir);
+    const sortedFolderContent = await sortFolderContent(folderContent);
+
+    console.table(sortedFolderContent);
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
   }
 };
 
@@ -61,7 +97,7 @@ const createReadline = () => {
   });
 
   rl.on("line", async (line) => {
-    const commandsWithoutArgs = ["up", ".exit"];
+    const commandsWithoutArgs = ["up", ".exit", "ls"];
 
     if (commandsWithoutArgs.includes(line)) {
       switch (line) {
@@ -70,6 +106,9 @@ const createReadline = () => {
           break;
         case "up":
           goToUpperDir();
+          break;
+        case "ls":
+          showFolderContent();
           break;
         default:
           console.log(invalidInputMessage);
