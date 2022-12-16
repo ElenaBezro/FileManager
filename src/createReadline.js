@@ -1,13 +1,14 @@
-import process from "process";
-import { basename, parse, sep } from "path";
+import process, { stdout } from "process";
+import { basename, parse, sep, format } from "path";
 import readlinePromises from "node:readline/promises";
-import { access, readdir, stat } from "node:fs/promises";
+import { readdir, stat, writeFile } from "node:fs/promises";
 import { getCurrentDir, isPathAbsolute, getElemPath } from "./pathUtils.js";
 import { getUserName } from "./getUserName.js";
+import { createReadStream } from "fs";
 
 const invalidInputMessage = "Invalid input";
 const operationFailedMessage = "Operation Failed";
-const correctPathMessage = 'Absolute path should start with "". \nRelative path should start with folder name';
+const correctPathMessage = 'Absolute path should start with "\\". \nRelative path should start with folder name';
 const userName = getUserName();
 let currentDir = getCurrentDir();
 const goodbyeMessage = `Thank you for using File Manager, ${userName}, goodbye!`;
@@ -17,7 +18,7 @@ const printCurrentDir = () => {
   console.log(currentDirMessage);
 };
 
-const exitProgram = () => {
+const exitProgram = (rl) => {
   console.log("\n");
   console.log(goodbyeMessage);
   rl.close();
@@ -38,14 +39,21 @@ const goToUpperDir = () => {
 const goToDir = async (args) => {
   try {
     const newPath = isPathAbsolute(args) ? args.slice(1) : currentDir + sep + args;
-    console.log(newPath);
+    // console.log(newPath);
+    //  console.log(parse(newPath));
+    // console.log(format(parse(newPath)));
 
-    await access(newPath);
-    currentDir = newPath;
+    if ((await stat(newPath)).isDirectory()) {
+      currentDir = format(parse(newPath));
+    } else {
+      throw new Error(`${newPath} is not a directory`);
+    }
     // TODO: Check if path contain filename
-  } catch {
+    //TODO:
+  } catch (e) {
     console.log(operationFailedMessage);
     console.log(correctPathMessage);
+    console.log(e.message);
   }
 };
 
@@ -85,6 +93,29 @@ const showFolderContent = async () => {
   }
 };
 
+const printFileContent = async (fileName) => {
+  try {
+    const filepath = currentDir + sep + fileName;
+    if ((await stat(filepath)).isFile()) {
+      const readFileStream = createReadStream(filepath);
+      readFileStream.pipe(stdout);
+    }
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
+  }
+};
+
+const addFile = async (fileName) => {
+  const filePath = currentDir + sep + fileName;
+  try {
+    await writeFile(filePath, "", { flag: "wx" });
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
+  }
+};
+
 const createReadline = () => {
   printCurrentDir();
 
@@ -118,6 +149,12 @@ const createReadline = () => {
         case "cd":
           await goToDir(args);
           break;
+        case "cat":
+          await printFileContent(args);
+          break;
+        case "add":
+          await addFile(args);
+          break;
         default:
           console.log(invalidInputMessage);
       }
@@ -126,7 +163,7 @@ const createReadline = () => {
   });
 
   rl.on("SIGINT", () => {
-    exitProgram();
+    exitProgram(rl);
   });
 };
 
