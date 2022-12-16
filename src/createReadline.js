@@ -1,14 +1,10 @@
-import process, { stdout } from "process";
-import { basename, parse, sep, format } from "path";
+import process from "process";
 import readlinePromises from "node:readline/promises";
-import { readdir, stat, writeFile } from "node:fs/promises";
-import { getCurrentDir, isPathAbsolute, getElemPath } from "./pathUtils.js";
+import { getCurrentDir, goToDir, goToUpperDir, showFolderContent } from "./pathUtils.js";
 import { getUserName } from "./getUserName.js";
-import { createReadStream } from "fs";
+import { printFileContent, addFile } from "./fsUtils.js";
 
 const invalidInputMessage = "Invalid input";
-const operationFailedMessage = "Operation Failed";
-const correctPathMessage = 'Absolute path should start with "\\". \nRelative path should start with folder name';
 const userName = getUserName();
 let currentDir = getCurrentDir();
 const goodbyeMessage = `Thank you for using File Manager, ${userName}, goodbye!`;
@@ -16,104 +12,6 @@ const goodbyeMessage = `Thank you for using File Manager, ${userName}, goodbye!`
 const printCurrentDir = () => {
   const currentDirMessage = `You are currently in ${currentDir}` + "\n" + "Print commands and wait for results.";
   console.log(currentDirMessage);
-};
-
-const exitProgram = (rl) => {
-  console.log("\n");
-  console.log(goodbyeMessage);
-  rl.close();
-};
-
-const goToUpperDir = () => {
-  try {
-    if (currentDir !== parse(currentDir).root) {
-      const currentFolderName = basename(currentDir);
-      // TODO: check if path contain FILEname
-      currentDir = currentDir.slice(0, currentDir.length - currentFolderName.length - 1);
-    }
-  } catch {
-    console.log(operationFailedMessage);
-  }
-};
-
-const goToDir = async (args) => {
-  try {
-    const newPath = isPathAbsolute(args) ? args.slice(1) : currentDir + sep + args;
-    // console.log(newPath);
-    //  console.log(parse(newPath));
-    // console.log(format(parse(newPath)));
-
-    if ((await stat(newPath)).isDirectory()) {
-      currentDir = format(parse(newPath));
-    } else {
-      throw new Error(`${newPath} is not a directory`);
-    }
-    // TODO: Check if path contain filename
-    //TODO:
-  } catch (e) {
-    console.log(operationFailedMessage);
-    console.log(correctPathMessage);
-    console.log(e.message);
-  }
-};
-
-const sortFolderContent = async (array) => {
-  try {
-    const fileNameComparator = (a, b) => a.localeCompare(b);
-    const sortByName = (array) => array.sort(fileNameComparator);
-
-    const folders = [];
-    const files = [];
-
-    const sortedFileAndDirectoryNames = await sortByName(array);
-    for (const fileOrDirectoryName of sortedFileAndDirectoryNames) {
-      const fileOrDirectoryStat = await stat(getElemPath(fileOrDirectoryName, currentDir));
-      if (fileOrDirectoryStat.isDirectory()) {
-        folders.push({ name: fileOrDirectoryName, type: "directory" });
-      } else {
-        files.push({ name: fileOrDirectoryName, type: "file" });
-      }
-    }
-
-    return [...folders, ...files];
-  } catch (e) {
-    throw new Error(e.message);
-  }
-};
-
-const showFolderContent = async () => {
-  try {
-    const folderContent = await readdir(currentDir);
-    const sortedFolderContent = await sortFolderContent(folderContent);
-
-    console.table(sortedFolderContent);
-  } catch (e) {
-    console.log(operationFailedMessage);
-    console.log(e.message);
-  }
-};
-
-const printFileContent = async (fileName) => {
-  try {
-    const filepath = currentDir + sep + fileName;
-    if ((await stat(filepath)).isFile()) {
-      const readFileStream = createReadStream(filepath);
-      readFileStream.pipe(stdout);
-    }
-  } catch (e) {
-    console.log(operationFailedMessage);
-    console.log(e.message);
-  }
-};
-
-const addFile = async (fileName) => {
-  const filePath = currentDir + sep + fileName;
-  try {
-    await writeFile(filePath, "", { flag: "wx" });
-  } catch (e) {
-    console.log(operationFailedMessage);
-    console.log(e.message);
-  }
 };
 
 const createReadline = () => {
@@ -124,6 +22,12 @@ const createReadline = () => {
     output: process.stdout,
   });
 
+  const exitProgram = () => {
+    console.log("\n");
+    console.log(goodbyeMessage);
+    rl.close();
+  };
+
   rl.on("line", async (line) => {
     const commandsWithoutArgs = ["up", ".exit", "ls"];
 
@@ -133,10 +37,10 @@ const createReadline = () => {
           exitProgram();
           break;
         case "up":
-          goToUpperDir();
+          currentDir = goToUpperDir(currentDir);
           break;
         case "ls":
-          showFolderContent();
+          await showFolderContent(currentDir);
           break;
         default:
           console.log(invalidInputMessage);
@@ -147,13 +51,13 @@ const createReadline = () => {
       const lineWithoutArgs = line.slice(0, startArgsIndex);
       switch (lineWithoutArgs) {
         case "cd":
-          await goToDir(args);
+          currentDir = await goToDir(args, currentDir);
           break;
         case "cat":
-          await printFileContent(args);
+          await printFileContent(args, currentDir);
           break;
         case "add":
-          await addFile(args);
+          await addFile(args, currentDir);
           break;
         default:
           console.log(invalidInputMessage);
@@ -163,7 +67,7 @@ const createReadline = () => {
   });
 
   rl.on("SIGINT", () => {
-    exitProgram(rl);
+    exitProgram();
   });
 };
 
