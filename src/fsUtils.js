@@ -1,6 +1,6 @@
 import { stdout } from "process";
-import { sep, parse } from "path";
-import { stat, writeFile, rename } from "node:fs/promises";
+import { sep, parse, normalize, resolve } from "path";
+import { stat, writeFile, rename, unlink } from "node:fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 
 const operationFailedMessage = "Operation Failed";
@@ -19,6 +19,7 @@ const printFileContent = async (fileName, currentDir) => {
 };
 
 const addFile = async (fileName, currentDir) => {
+  // TODO: add case with space in file name.
   const filePath = currentDir + sep + fileName;
   try {
     await writeFile(filePath, "", { flag: "wx" });
@@ -41,19 +42,44 @@ const renameFile = async (args, currentDir) => {
   }
 };
 
-const copyFile = async (args, currentDir) => {
-  const argsArray = args.split(" ");
+const isPathAbsolute = (path) => {
+  return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
+};
+
+const getArgsArray = (args) => {
+  const regex = new RegExp('"[^"]+"|[\\S]+', "g");
+  const argsArray = [];
+  args
+    .replaceAll("'", '"')
+    .match(regex)
+    .forEach((element) => {
+      if (!element) return;
+      return argsArray.push(element.replace(/"/g, ""));
+    });
+  return argsArray;
+};
+
+const copyFile = async (args, currentDir, removeSourceFile = false) => {
+  const argsArray = getArgsArray(args);
+
   try {
-    const originFilePath = argsArray[0];
-    const folderToCopyInPath = argsArray[1];
+    const originFilePath = isPathAbsolute(argsArray[0]) ? argsArray[0] : currentDir + sep + argsArray[0];
+    const folderToCopyInPath = isPathAbsolute(argsArray[1]) ? argsArray[1] : currentDir + sep + argsArray[1];
     const fileName = parse(originFilePath).base;
 
     await addFile(fileName, folderToCopyInPath);
 
-    if ((await stat(originFilePath)).isFile() && (await stat(folderToCopyInPath)).isDirectory()) {
+    const originFileStat = await stat(originFilePath);
+    const folderToCopyInStat = await stat(folderToCopyInPath);
+    if (originFileStat.isFile() && folderToCopyInStat.isDirectory()) {
       const readFileStream = createReadStream(originFilePath);
       const writeFileStream = createWriteStream(folderToCopyInPath + sep + fileName);
       readFileStream.pipe(writeFileStream);
+      if (removeSourceFile) {
+        readFileStream.on("end", () => {
+          unlink(originFilePath);
+        });
+      }
     } else {
       console.log("Path should be absolute. \n Example: 'cp c:\\Users\\111.txt d:\\Downloads'");
       throw new Error();
@@ -64,4 +90,13 @@ const copyFile = async (args, currentDir) => {
   }
 };
 
-export { printFileContent, addFile, renameFile, copyFile };
+const moveFile = async (args, currentDir) => {
+  try {
+    await copyFile(args, currentDir, true);
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
+  }
+};
+
+export { printFileContent, addFile, renameFile, copyFile, moveFile };
