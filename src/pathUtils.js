@@ -35,9 +35,24 @@ const goToUpperDir = (currentDir) => {
   }
 };
 
+const getArgsArray = (args) => {
+  const regex = new RegExp('"[^"]+"|[\\S]+', "g");
+  const argsArray = [];
+  args
+    .replaceAll("'", '"')
+    .match(regex)
+    .forEach((element) => {
+      if (!element) return;
+      return argsArray.push(element.replace(/"/g, ""));
+    });
+  return argsArray;
+};
+
 const goToDir = async (args, currentDir) => {
   try {
-    const newPath = isPathAbsolute(args) ? args.slice(1) : currentDir + sep + args;
+    const argsArray = getArgsArray(args);
+    const newPath = isPathAbsolute(argsArray[0]) ? argsArray[0] : currentDir + sep + argsArray[0];
+    // const newPath = isPathAbsolute(args) ? args.slice(1) : currentDir + sep + args;
 
     if ((await stat(newPath)).isDirectory()) {
       return format(parse(newPath));

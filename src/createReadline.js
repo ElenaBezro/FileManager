@@ -2,7 +2,7 @@ import process from "process";
 import readlinePromises from "node:readline/promises";
 import { getCurrentDir, goToDir, goToUpperDir, showFolderContent } from "./pathUtils.js";
 import { getUserName } from "./getUserName.js";
-import { printFileContent, addFile, renameFile, copyFile, moveFile } from "./fsUtils.js";
+import { printFileContent, addFile, renameFile, copyFile, moveFile, removeFile } from "./fsUtils.js";
 
 const invalidInputMessage = "Invalid input";
 const userName = getUserName();
@@ -67,6 +67,9 @@ const createReadline = () => {
           break;
         case "mv":
           await moveFile(args, currentDir);
+          break;
+        case "rm":
+          await removeFile(args, currentDir);
           break;
         default:
           console.log(invalidInputMessage);

@@ -99,4 +99,18 @@ const moveFile = async (args, currentDir) => {
   }
 };
 
-export { printFileContent, addFile, renameFile, copyFile, moveFile };
+const removeFile = async (args, currentDir) => {
+  const argsArray = getArgsArray(args);
+
+  try {
+    const filePath = isPathAbsolute(argsArray[0]) ? argsArray[0] : currentDir + sep + argsArray[0];
+    if ((await stat(filePath)).isFile()) {
+      unlink(filePath);
+    }
+  } catch (e) {
+    console.log(operationFailedMessage);
+    console.log(e.message);
+  }
+};
+
+export { printFileContent, addFile, renameFile, copyFile, moveFile, removeFile };
