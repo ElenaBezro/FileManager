@@ -7,7 +7,7 @@ import { stat } from "node:fs/promises";
 const operationFailedMessage = "Operation Failed";
 
 const isPathAbsolute = (path) => {
-  return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
+  return resolve(path).replace(/[\/|\\]$/, "") === normalize(path).replace(/[\/|\\]$/, "");
 };
 
 const getArgsArray = (args) => {
