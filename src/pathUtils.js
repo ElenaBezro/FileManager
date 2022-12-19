@@ -1,10 +1,9 @@
 import { homedir } from "node:os";
 import { fileURLToPath } from "url";
-import { dirname, basename, parse, sep, format } from "path";
+import { dirname, basename, parse, sep, format, normalize, resolve } from "path";
 import { readdir, stat } from "node:fs/promises";
 
 const operationFailedMessage = "Operation Failed";
-const correctPathMessage = 'Absolute path should start with "\\". \nRelative path should start with folder name';
 
 const getCurrentDir = () => {
   const currentDir = "";
@@ -12,8 +11,12 @@ const getCurrentDir = () => {
   return currentDir ? dirname(__filename) : homedir();
 };
 
-const isPathAbsolute = (args) => {
-  return args.startsWith("\\");
+// const isPathAbsolute = (args) => {
+//   return args.startsWith("\\");
+// };
+
+const isPathAbsolute = (path) => {
+  return resolve(path).replace(/[\/|\\]$/, "") === normalize(path).replace(/[\/|\\]$/, "");
 };
 
 const getElemPath = (elem, currentDir) => {
@@ -52,7 +55,6 @@ const goToDir = async (args, currentDir) => {
   try {
     const argsArray = getArgsArray(args);
     const newPath = isPathAbsolute(argsArray[0]) ? argsArray[0] : currentDir + sep + argsArray[0];
-    // const newPath = isPathAbsolute(args) ? args.slice(1) : currentDir + sep + args;
 
     if ((await stat(newPath)).isDirectory()) {
       return format(parse(newPath));
@@ -61,7 +63,6 @@ const goToDir = async (args, currentDir) => {
     }
   } catch (e) {
     console.log(operationFailedMessage);
-    console.log(correctPathMessage);
     console.log(e.message);
     return currentDir;
   }

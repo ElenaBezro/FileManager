@@ -5,12 +5,22 @@ import { createReadStream, createWriteStream } from "fs";
 
 const operationFailedMessage = "Operation Failed";
 
+const isPathAbsolute = (path) => {
+  return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
+};
+
 const printFileContent = async (fileName, currentDir) => {
   try {
-    const filepath = currentDir + sep + fileName;
+    const filepath = isPathAbsolute(fileName) ? fileName : currentDir + sep + fileName;
     if ((await stat(filepath)).isFile()) {
-      const readFileStream = createReadStream(filepath);
-      readFileStream.pipe(stdout);
+      return new Promise((resolve) => {
+        const readFileStream = createReadStream(filepath);
+        readFileStream.pipe(stdout);
+        readFileStream.on("end", () => {
+          console.log("\n");
+          resolve();
+        });
+      });
     }
   } catch (e) {
     console.log(operationFailedMessage);
@@ -40,10 +50,6 @@ const renameFile = async (args, currentDir) => {
     console.log(operationFailedMessage);
     console.log(e.message);
   }
-};
-
-const isPathAbsolute = (path) => {
-  return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
 };
 
 const getArgsArray = (args) => {
