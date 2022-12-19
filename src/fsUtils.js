@@ -6,7 +6,7 @@ import { createReadStream, createWriteStream } from "fs";
 const operationFailedMessage = "Operation Failed";
 
 const isPathAbsolute = (path) => {
-  return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
+  return resolve(path).replace(/[\/|\\]$/, "") === normalize(path).replace(/[\/|\\]$/, "");
 };
 
 const getArgsArray = (args) => {
