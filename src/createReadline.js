@@ -5,6 +5,7 @@ import { getUserName } from "./getUserName.js";
 import { printFileContent, addFile, renameFile, copyFile, moveFile, removeFile } from "./fsUtils.js";
 import { getOSInfo } from "./osiUtils.js";
 import { printHash } from "./hash.js";
+import { compressFile, decompressFile } from "./compress.js";
 
 const invalidInputMessage = "Invalid input";
 const userName = getUserName();
@@ -79,6 +80,12 @@ const createReadline = () => {
           break;
         case "hash":
           await printHash(args, currentDir);
+          break;
+        case "compress":
+          await compressFile(args, currentDir);
+          break;
+        case "decompress":
+          await decompressFile(args, currentDir);
           break;
         default:
           console.log(invalidInputMessage);
