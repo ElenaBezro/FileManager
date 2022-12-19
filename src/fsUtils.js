@@ -9,6 +9,19 @@ const isPathAbsolute = (path) => {
   return resolve(path) === normalize(path).replace(/[\/|\\]$/, "");
 };
 
+const getArgsArray = (args) => {
+  const regex = new RegExp('"[^"]+"|[\\S]+', "g");
+  const argsArray = [];
+  args
+    .replaceAll("'", '"')
+    .match(regex)
+    .forEach((element) => {
+      if (!element) return;
+      return argsArray.push(element.replace(/"/g, ""));
+    });
+  return argsArray;
+};
+
 const printFileContent = async (fileName, currentDir) => {
   try {
     const filepath = isPathAbsolute(fileName) ? fileName : currentDir + sep + fileName;
@@ -40,29 +53,17 @@ const addFile = async (fileName, currentDir) => {
 };
 
 const renameFile = async (args, currentDir) => {
-  const argsArray = args.split(" ");
+  const argsArray = getArgsArray(args);
 
   try {
-    const previousName = currentDir + sep + argsArray[0];
-    const newName = currentDir + sep + argsArray[1];
+    const previousName = isPathAbsolute(argsArray[0]) ? argsArray[0] : currentDir + sep + argsArray[0];
+    const newName = isPathAbsolute(argsArray[1]) ? argsArray[1] : currentDir + sep + argsArray[1];
+
     await rename(previousName, newName);
   } catch (e) {
     console.log(operationFailedMessage);
     console.log(e.message);
   }
-};
-
-const getArgsArray = (args) => {
-  const regex = new RegExp('"[^"]+"|[\\S]+', "g");
-  const argsArray = [];
-  args
-    .replaceAll("'", '"')
-    .match(regex)
-    .forEach((element) => {
-      if (!element) return;
-      return argsArray.push(element.replace(/"/g, ""));
-    });
-  return argsArray;
 };
 
 const copyFile = async (args, currentDir, removeSourceFile = false) => {
