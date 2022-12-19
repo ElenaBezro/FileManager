@@ -4,6 +4,7 @@ import { getCurrentDir, goToDir, goToUpperDir, showFolderContent } from "./pathU
 import { getUserName } from "./getUserName.js";
 import { printFileContent, addFile, renameFile, copyFile, moveFile, removeFile } from "./fsUtils.js";
 import { getOSInfo } from "./osiUtils.js";
+import { printHash } from "./hash.js";
 
 const invalidInputMessage = "Invalid input";
 const userName = getUserName();
@@ -43,6 +44,7 @@ const createReadline = () => {
         case "ls":
           await showFolderContent(currentDir);
           break;
+
         default:
           console.log(invalidInputMessage);
       }
@@ -74,6 +76,9 @@ const createReadline = () => {
           break;
         case "os":
           getOSInfo(args);
+          break;
+        case "hash":
+          await printHash(args, currentDir);
           break;
         default:
           console.log(invalidInputMessage);
